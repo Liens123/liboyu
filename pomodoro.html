@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.5s ease;
+        }
+
+        body.work {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+
+        body.break {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px 50px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            min-width: 320px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #2d3436;
+            margin-bottom: 8px;
+        }
+
+        .status {
+            font-size: 16px;
+            color: #636e72;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+
+        .timer {
+            font-size: 80px;
+            font-weight: 700;
+            color: #2d3436;
+            font-variant-numeric: tabular-nums;
+            margin-bottom: 30px;
+            line-height: 1;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        button {
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #btn-start {
+            background: #00b894;
+            color: white;
+        }
+
+        #btn-pause {
+            background: #fdcb6e;
+            color: #2d3436;
+        }
+
+        #btn-reset {
+            background: #dfe6e9;
+            color: #2d3436;
+        }
+
+        .count {
+            font-size: 14px;
+            color: #b2bec3;
+        }
+
+        .count span {
+            font-weight: 700;
+            color: #636e72;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body class="work">
+    <div class="card">
+        <h1>番茄钟</h1>
+        <div class="status" id="status">准备开始</div>
+        <div class="timer" id="timer">25:00</div>
+        <div class="buttons">
+            <button id="btn-start" onclick="timer.start()">开始</button>
+            <button id="btn-pause" onclick="timer.pause()">暂停</button>
+            <button id="btn-reset" onclick="timer.reset()">重置</button>
+        </div>
+        <div class="count">已完成 <span id="count">0</span> 个番茄</div>
+    </div>
+
+    <script>
+        class PomodoroTimer {
+            constructor() {
+                this.workDuration = 25 * 60;
+                this.breakDuration = 5 * 60;
+                this.timeLeft = this.workDuration;
+                this.isWork = true;
+                this.isRunning = false;
+                this.interval = null;
+                this.completedCount = 0;
+
+                this.timerEl = document.getElementById('timer');
+                this.statusEl = document.getElementById('status');
+                this.countEl = document.getElementById('count');
+                this.updateDisplay();
+            }
+
+            start() {
+                if (this.isRunning) return;
+                this.isRunning = true;
+                this.statusEl.textContent = this.isWork ? '工作中...' : '休息中...';
+                this.interval = setInterval(() => this.tick(), 1000);
+            }
+
+            pause() {
+                if (!this.isRunning) return;
+                this.isRunning = false;
+                clearInterval(this.interval);
+                this.statusEl.textContent = '已暂停';
+            }
+
+            reset() {
+                this.isRunning = false;
+                clearInterval(this.interval);
+                this.isWork = true;
+                this.timeLeft = this.workDuration;
+                this.updateDisplay();
+                this.statusEl.textContent = '准备开始';
+                document.body.className = 'work';
+            }
+
+            tick() {
+                this.timeLeft--;
+                this.updateDisplay();
+
+                if (this.timeLeft <= 0) {
+                    this.playSound();
+                    this.switchMode();
+                }
+            }
+
+            switchMode() {
+                if (this.isWork) {
+                    this.completedCount++;
+                    this.countEl.textContent = this.completedCount;
+                    this.isWork = false;
+                    this.timeLeft = this.breakDuration;
+                    this.statusEl.textContent = '休息中...';
+                    document.body.className = 'break';
+                } else {
+                    this.isWork = true;
+                    this.timeLeft = this.workDuration;
+                    this.statusEl.textContent = '工作中...';
+                    document.body.className = 'work';
+                }
+            }
+
+            updateDisplay() {
+                const minutes = Math.floor(this.timeLeft / 60);
+                const seconds = this.timeLeft % 60;
+                this.timerEl.textContent =
+                    String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+            }
+
+            playSound() {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const notes = [523.25, 659.25, 783.99];
+                    notes.forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.frequency.value = freq;
+                        osc.type = 'sine';
+                        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.2);
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.2 + 0.4);
+                        osc.start(ctx.currentTime + i * 0.2);
+                        osc.stop(ctx.currentTime + i * 0.2 + 0.4);
+                    });
+                } catch (e) {
+                    // Audio not supported
+                }
+            }
+        }
+
+        const timer = new PomodoroTimer();
+    </script>
+</body>
+</html>
