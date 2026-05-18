@@ -9,142 +9,213 @@ from config import (
 
 # 猫咪颜色方案
 CAT_COLORS = {
-    "body":      "#FF8C42",   # 橘猫主色
-    "body_dark": "#E07030",   # 深橘
-    "belly":     "#FFD4A8",   # 肚子浅色
-    "ear_outer": "#FF8C42",   # 耳朵外侧
-    "ear_inner": "#FFB0B0",   # 耳朵内侧粉
+    "body":      "#F09040",   # 橘猫主色（更温暖）
+    "body_dark": "#D07830",   # 深橘
+    "belly":     "#FFE8D0",   # 肚子浅色（对比更强）
+    "ear_outer": "#F09040",   # 耳朵外侧
+    "ear_inner": "#FFAAAA",   # 耳朵内侧粉（更粉）
     "eye_white": "#FFFFFF",   # 眼白
-    "eye_pupil": "#2C2C2C",   # 瞳孔
+    "eye_pupil": "#1A1A2E",   # 瞳孔（深蓝黑）
     "eye_shine": "#FFFFFF",   # 眼睛高光
-    "nose":      "#FF6B8A",   # 鼻子粉
+    "nose":      "#FF6B81",   # 鼻子粉（珊瑚色）
     "mouth":     "#CC4455",   # 嘴巴
-    "whisker":   "#888888",   # 胡须
-    "outline":   "#3D2B1F",   # 轮廓深色
-    "cheek":     "#FF9999",   # 腮红
-    "tail":      "#FF8C42",   # 尾巴
-    "paw":       "#FFD4A8",   # 爪子
+    "whisker":   "#706050",   # 胡须（棕灰色）
+    "outline":   "#2D1F15",   # 轮廓深色
+    "cheek":     "#FFB0B0",   # 腮红（更浅）
+    "tail":      "#D07830",   # 尾巴（深色区分）
+    "paw":       "#FFE8D0",   # 爪子
+    "fur_tuft":  "#FFD0A0",   # 毛簇
+    "paw_bean":  "#FF8090",   # 脚掌豆
 }
 
 
-def _draw_cat_body(cx, cy, scale=1.0):
+def _draw_cat_body(cx, cy, scale=1.0, frame=0, state=None):
     """绘制猫咪身体各部分，返回 Canvas 绘制指令列表"""
     s = scale
     parts = []
 
-    # 尾巴（在身体后面）
-    parts.append(("oval", cx - 55*s, cy + 15*s, cx - 35*s, cy + 65*s,
-                  CAT_COLORS["tail"], CAT_COLORS["outline"], 2))
+    # 预计算动画值
+    blink = (frame % 80) in (0, 1, 2) if frame > 0 else False
+    ear_twitch = 0
+    if frame > 0 and frame % 60 in (0, 1, 2, 3):
+        ear_twitch = 3 if frame % 60 < 2 else -1
 
-    # 身体（椭圆）
-    parts.append(("oval", cx - 30*s, cy + 5*s, cx + 30*s, cy + 55*s,
+    # 1. 尾巴（曲线，动画集成）
+    tail_swing = math.sin(frame * 1.0) * 6 * s if frame > 0 else 0
+    tail_sway = math.sin(frame * 0.5 + 1.0) * 4 * s if frame > 0 else 0
+    tail_pts = [
+        (cx - 22*s, cy + 42*s),
+        (cx - 38*s + tail_swing*0.3, cy + 28*s),
+        (cx - 50*s + tail_swing*0.7, cy + 12*s + tail_sway*0.5),
+        (cx - 46*s + tail_swing, cy - 5*s + tail_sway),
+    ]
+    parts.append(("spline", tail_pts, CAT_COLORS["body_dark"], 5))
+
+    # 2. 身体（更修长的椭圆）
+    parts.append(("oval", cx - 28*s, cy + 5*s, cx + 28*s, cy + 63*s,
                   CAT_COLORS["body"], CAT_COLORS["outline"], 2))
 
-    # 肚子
-    parts.append(("oval", cx - 18*s, cy + 15*s, cx + 18*s, cy + 48*s,
+    # 3. 肚子
+    parts.append(("oval", cx - 16*s, cy + 18*s, cx + 16*s, cy + 55*s,
                   CAT_COLORS["belly"], "", 0))
 
-    # 左耳（三角形）
+    # 4. 胸部毛簇
+    parts.append(("oval", cx - 10*s, cy + 38*s, cx + 10*s, cy + 50*s,
+                  CAT_COLORS["fur_tuft"], "", 0))
+
+    # 5. 左耳（更尖的三角形）
     ear_l = [
-        (cx - 28*s, cy - 15*s),
-        (cx - 38*s, cy - 50*s),
-        (cx - 8*s, cy - 25*s),
+        (cx - 26*s, cy - 18*s),
+        (cx - 38*s + ear_twitch, cy - 58*s),
+        (cx - 6*s, cy - 26*s),
     ]
     parts.append(("polygon", ear_l, CAT_COLORS["ear_outer"], CAT_COLORS["outline"], 2))
 
     # 左耳内部
     ear_l_inner = [
-        (cx - 26*s, cy - 20*s),
-        (cx - 33*s, cy - 42*s),
-        (cx - 13*s, cy - 27*s),
+        (cx - 24*s, cy - 22*s),
+        (cx - 34*s + ear_twitch*0.5, cy - 48*s),
+        (cx - 12*s, cy - 28*s),
     ]
     parts.append(("polygon", ear_l_inner, CAT_COLORS["ear_inner"], "", 0))
 
-    # 右耳（三角形）
+    # 左耳毛簇
+    ear_l_tuft = [
+        (cx - 30*s, cy - 45*s),
+        (cx - 36*s + ear_twitch*0.7, cy - 54*s),
+        (cx - 25*s, cy - 48*s),
+    ]
+    parts.append(("polygon", ear_l_tuft, CAT_COLORS["ear_inner"], "", 0))
+
+    # 6. 右耳
     ear_r = [
-        (cx + 28*s, cy - 15*s),
-        (cx + 38*s, cy - 50*s),
-        (cx + 8*s, cy - 25*s),
+        (cx + 26*s, cy - 18*s),
+        (cx + 38*s - ear_twitch, cy - 58*s),
+        (cx + 6*s, cy - 26*s),
     ]
     parts.append(("polygon", ear_r, CAT_COLORS["ear_outer"], CAT_COLORS["outline"], 2))
 
     # 右耳内部
     ear_r_inner = [
-        (cx + 26*s, cy - 20*s),
-        (cx + 33*s, cy - 42*s),
-        (cx + 13*s, cy - 27*s),
+        (cx + 24*s, cy - 22*s),
+        (cx + 34*s - ear_twitch*0.5, cy - 48*s),
+        (cx + 12*s, cy - 28*s),
     ]
     parts.append(("polygon", ear_r_inner, CAT_COLORS["ear_inner"], "", 0))
 
-    # 头部（圆形）
-    parts.append(("oval", cx - 32*s, cy - 28*s, cx + 32*s, cy + 22*s,
+    # 右耳毛簇
+    ear_r_tuft = [
+        (cx + 30*s, cy - 45*s),
+        (cx + 36*s - ear_twitch*0.7, cy - 54*s),
+        (cx + 25*s, cy - 48*s),
+    ]
+    parts.append(("polygon", ear_r_tuft, CAT_COLORS["ear_inner"], "", 0))
+
+    # 7. 头部（稍窄的椭圆）
+    parts.append(("oval", cx - 29*s, cy - 30*s, cx + 29*s, cy + 16*s,
                   CAT_COLORS["body"], CAT_COLORS["outline"], 2))
 
-    # 左眼白
-    parts.append(("oval", cx - 22*s, cy - 15*s, cx - 6*s, cy + 5*s,
-                  CAT_COLORS["eye_white"], CAT_COLORS["outline"], 1.5))
+    # 8. 腮红（上移 2px）
+    parts.append(("oval", cx - 27*s, cy - 2*s, cx - 17*s, cy + 6*s,
+                  CAT_COLORS["cheek"], "", 0))
+    parts.append(("oval", cx + 17*s, cy - 2*s, cx + 27*s, cy + 6*s,
+                  CAT_COLORS["cheek"], "", 0))
 
-    # 左瞳孔
-    parts.append(("oval", cx - 18*s, cy - 10*s, cx - 10*s, cy + 2*s,
-                  CAT_COLORS["eye_pupil"], "", 0))
+    # 9. 眼睛（检查眨眼）
+    if not blink:
+        # 左眼白
+        parts.append(("oval", cx - 22*s, cy - 17*s, cx - 5*s, cy + 4*s,
+                      CAT_COLORS["eye_white"], CAT_COLORS["outline"], 1.5))
+        # 左瞳孔（垂直猫瞳）
+        parts.append(("oval", cx - 17*s, cy - 11*s, cx - 10*s, cy + 2*s,
+                      CAT_COLORS["eye_pupil"], "", 0))
+        # 左眼主高光
+        parts.append(("oval", cx - 15*s, cy - 9*s, cx - 12*s, cy - 6*s,
+                      CAT_COLORS["eye_shine"], "", 0))
+        # 左眼副高光
+        parts.append(("oval", cx - 12*s, cy + 0*s, cx - 11*s, cy + 1*s,
+                      CAT_COLORS["eye_shine"], "", 0))
 
-    # 左眼高光
-    parts.append(("oval", cx - 16*s, cy - 8*s, cx - 13*s, cy - 5*s,
-                  CAT_COLORS["eye_shine"], "", 0))
+        # 右眼白
+        parts.append(("oval", cx + 5*s, cy - 17*s, cx + 22*s, cy + 4*s,
+                      CAT_COLORS["eye_white"], CAT_COLORS["outline"], 1.5))
+        # 右瞳孔
+        parts.append(("oval", cx + 10*s, cy - 11*s, cx + 17*s, cy + 2*s,
+                      CAT_COLORS["eye_pupil"], "", 0))
+        # 右眼主高光
+        parts.append(("oval", cx + 12*s, cy - 9*s, cx + 15*s, cy - 6*s,
+                      CAT_COLORS["eye_shine"], "", 0))
+        # 右眼副高光
+        parts.append(("oval", cx + 11*s, cy + 0*s, cx + 12*s, cy + 1*s,
+                      CAT_COLORS["eye_shine"], "", 0))
+    else:
+        # 眨眼 - 闭眼弧线
+        parts.append(("arc", cx - 22*s, cy - 17*s, cx - 5*s, cy + 4*s, 0, 180,
+                      CAT_COLORS["eye_pupil"], 2))
+        parts.append(("arc", cx + 5*s, cy - 17*s, cx + 22*s, cy + 4*s, 0, 180,
+                      CAT_COLORS["eye_pupil"], 2))
 
-    # 右眼白
-    parts.append(("oval", cx + 6*s, cy - 15*s, cx + 22*s, cy + 5*s,
-                  CAT_COLORS["eye_white"], CAT_COLORS["outline"], 1.5))
-
-    # 右瞳孔
-    parts.append(("oval", cx + 10*s, cy - 10*s, cx + 18*s, cy + 2*s,
-                  CAT_COLORS["eye_pupil"], "", 0))
-
-    # 右眼高光
-    parts.append(("oval", cx + 13*s, cy - 8*s, cx + 16*s, cy - 5*s,
-                  CAT_COLORS["eye_shine"], "", 0))
-
-    # 鼻子（小三角）
+    # 10. 鼻子（稍大）
     nose_pts = [
-        (cx - 4*s, cy + 5*s),
-        (cx + 4*s, cy + 5*s),
+        (cx - 5*s, cy + 4*s),
+        (cx + 5*s, cy + 4*s),
         (cx, cy + 11*s),
     ]
     parts.append(("polygon", nose_pts, CAT_COLORS["nose"], "", 0))
 
-    # 嘴巴（W 形）
-    parts.append(("line", cx - 8*s, cy + 13*s, cx, cy + 17*s, CAT_COLORS["mouth"], 1.5))
-    parts.append(("line", cx, cy + 17*s, cx + 8*s, cy + 13*s, CAT_COLORS["mouth"], 1.5))
+    # 鼻唇沟
+    parts.append(("oval", cx - 2*s, cy + 10*s, cx + 2*s, cy + 13*s,
+                  CAT_COLORS["body_dark"], "", 0))
 
-    # 腮红
-    parts.append(("oval", cx - 28*s, cy + 0*s, cx - 18*s, cy + 8*s,
-                  CAT_COLORS["cheek"], "", 0))
-    parts.append(("oval", cx + 18*s, cy + 0*s, cx + 28*s, cy + 8*s,
-                  CAT_COLORS["cheek"], "", 0))
+    # 11. 嘴巴（W 形 + 连接线）
+    parts.append(("line", cx, cy + 11*s, cx, cy + 14*s, CAT_COLORS["mouth"], 1))
+    parts.append(("line", cx - 9*s, cy + 14*s, cx, cy + 18*s, CAT_COLORS["mouth"], 1.5))
+    parts.append(("line", cx, cy + 18*s, cx + 9*s, cy + 14*s, CAT_COLORS["mouth"], 1.5))
 
+    # 12. 胡须（平滑曲线）
     # 左胡须
-    parts.append(("line", cx - 30*s, cy + 8*s, cx - 50*s, cy + 4*s, CAT_COLORS["whisker"], 1))
-    parts.append(("line", cx - 30*s, cy + 11*s, cx - 50*s, cy + 11*s, CAT_COLORS["whisker"], 1))
-    parts.append(("line", cx - 30*s, cy + 14*s, cx - 50*s, cy + 18*s, CAT_COLORS["whisker"], 1))
+    parts.append(("spline", [(cx - 28*s, cy + 6*s), (cx - 38*s, cy + 3*s), (cx - 52*s, cy + 0*s)],
+                  CAT_COLORS["whisker"], 1))
+    parts.append(("spline", [(cx - 28*s, cy + 9*s), (cx - 38*s, cy + 9*s), (cx - 52*s, cy + 9*s)],
+                  CAT_COLORS["whisker"], 1))
+    parts.append(("spline", [(cx - 28*s, cy + 12*s), (cx - 38*s, cy + 14*s), (cx - 52*s, cy + 18*s)],
+                  CAT_COLORS["whisker"], 1))
 
     # 右胡须
-    parts.append(("line", cx + 30*s, cy + 8*s, cx + 50*s, cy + 4*s, CAT_COLORS["whisker"], 1))
-    parts.append(("line", cx + 30*s, cy + 11*s, cx + 50*s, cy + 11*s, CAT_COLORS["whisker"], 1))
-    parts.append(("line", cx + 30*s, cy + 14*s, cx + 50*s, cy + 18*s, CAT_COLORS["whisker"], 1))
+    parts.append(("spline", [(cx + 28*s, cy + 6*s), (cx + 38*s, cy + 3*s), (cx + 52*s, cy + 0*s)],
+                  CAT_COLORS["whisker"], 1))
+    parts.append(("spline", [(cx + 28*s, cy + 9*s), (cx + 38*s, cy + 9*s), (cx + 52*s, cy + 9*s)],
+                  CAT_COLORS["whisker"], 1))
+    parts.append(("spline", [(cx + 28*s, cy + 12*s), (cx + 38*s, cy + 14*s), (cx + 52*s, cy + 18*s)],
+                  CAT_COLORS["whisker"], 1))
 
-    # 左前腿
-    parts.append(("oval", cx - 22*s, cy + 42*s, cx - 10*s, cy + 62*s,
+    # 13. 左前腿（更长）
+    parts.append(("oval", cx - 21*s, cy + 46*s, cx - 9*s, cy + 72*s,
                   CAT_COLORS["body"], CAT_COLORS["outline"], 1.5))
     # 左爪子
-    parts.append(("oval", cx - 20*s, cy + 56*s, cx - 12*s, cy + 63*s,
+    parts.append(("oval", cx - 20*s, cy + 66*s, cx - 10*s, cy + 74*s,
                   CAT_COLORS["paw"], CAT_COLORS["outline"], 1))
+    # 左脚掌豆
+    parts.append(("oval", cx - 18*s, cy + 69*s, cx - 16*s, cy + 72*s,
+                  CAT_COLORS["paw_bean"], "", 0))
+    parts.append(("oval", cx - 15*s, cy + 69*s, cx - 13*s, cy + 72*s,
+                  CAT_COLORS["paw_bean"], "", 0))
+    parts.append(("oval", cx - 12*s, cy + 69*s, cx - 10*s, cy + 72*s,
+                  CAT_COLORS["paw_bean"], "", 0))
 
-    # 右前腿
-    parts.append(("oval", cx + 10*s, cy + 42*s, cx + 22*s, cy + 62*s,
+    # 14. 右前腿
+    parts.append(("oval", cx + 9*s, cy + 46*s, cx + 21*s, cy + 72*s,
                   CAT_COLORS["body"], CAT_COLORS["outline"], 1.5))
     # 右爪子
-    parts.append(("oval", cx + 12*s, cy + 56*s, cx + 20*s, cy + 63*s,
+    parts.append(("oval", cx + 10*s, cy + 66*s, cx + 20*s, cy + 74*s,
                   CAT_COLORS["paw"], CAT_COLORS["outline"], 1))
+    # 右脚掌豆
+    parts.append(("oval", cx + 10*s, cy + 69*s, cx + 12*s, cy + 72*s,
+                  CAT_COLORS["paw_bean"], "", 0))
+    parts.append(("oval", cx + 13*s, cy + 69*s, cx + 15*s, cy + 72*s,
+                  CAT_COLORS["paw_bean"], "", 0))
+    parts.append(("oval", cx + 16*s, cy + 69*s, cx + 18*s, cy + 72*s,
+                  CAT_COLORS["paw_bean"], "", 0))
 
     return parts
 
@@ -153,13 +224,13 @@ def _draw_closed_eyes(canvas, cx, cy, s):
     """绘制闭眼（困倦/睡觉）"""
     # 左眼 - 弧线
     canvas.create_arc(
-        cx - 22*s, cy - 15*s, cx - 6*s, cy + 5*s,
+        cx - 22*s, cy - 17*s, cx - 5*s, cy + 4*s,
         start=0, extent=180, style="arc",
         outline=CAT_COLORS["eye_pupil"], width=2, tags="pet"
     )
     # 右眼 - 弧线
     canvas.create_arc(
-        cx + 6*s, cy - 15*s, cx + 22*s, cy + 5*s,
+        cx + 5*s, cy - 17*s, cx + 22*s, cy + 4*s,
         start=0, extent=180, style="arc",
         outline=CAT_COLORS["eye_pupil"], width=2, tags="pet"
     )
@@ -169,13 +240,13 @@ def _draw_happy_eyes(canvas, cx, cy, s):
     """绘制开心眼睛（^_^ 形）"""
     # 左眼 - 弧线
     canvas.create_arc(
-        cx - 22*s, cy - 15*s, cx - 6*s, cy + 5*s,
+        cx - 22*s, cy - 17*s, cx - 5*s, cy + 4*s,
         start=180, extent=180, style="arc",
         outline=CAT_COLORS["eye_pupil"], width=2.5, tags="pet"
     )
     # 右眼 - 弧线
     canvas.create_arc(
-        cx + 6*s, cy - 15*s, cx + 22*s, cy + 5*s,
+        cx + 5*s, cy - 17*s, cx + 22*s, cy + 4*s,
         start=180, extent=180, style="arc",
         outline=CAT_COLORS["eye_pupil"], width=2.5, tags="pet"
     )
@@ -185,13 +256,13 @@ def _draw_sad_eyes(canvas, cx, cy, s):
     """绘制难过眼睛"""
     # 左眼 - 下垂弧线
     canvas.create_arc(
-        cx - 22*s, cy - 18*s, cx - 6*s, cy + 2*s,
+        cx - 22*s, cy - 20*s, cx - 5*s, cy + 1*s,
         start=0, extent=180, style="arc",
         outline=CAT_COLORS["eye_pupil"], width=2, tags="pet"
     )
     # 右眼
     canvas.create_arc(
-        cx + 6*s, cy - 18*s, cx + 22*s, cy + 2*s,
+        cx + 5*s, cy - 20*s, cx + 22*s, cy + 1*s,
         start=0, extent=180, style="arc",
         outline=CAT_COLORS["eye_pupil"], width=2, tags="pet"
     )
@@ -201,20 +272,20 @@ def _draw_sick_face(canvas, cx, cy, s):
     """绘制生病表情（X_X）"""
     # 左眼 X
     canvas.create_line(
-        cx - 20*s, cy - 12*s, cx - 8*s, cy + 0*s,
+        cx - 20*s, cy - 14*s, cx - 7*s, cy - 1*s,
         fill=CAT_COLORS["eye_pupil"], width=2, tags="pet"
     )
     canvas.create_line(
-        cx - 8*s, cy - 12*s, cx - 20*s, cy + 0*s,
+        cx - 7*s, cy - 14*s, cx - 20*s, cy - 1*s,
         fill=CAT_COLORS["eye_pupil"], width=2, tags="pet"
     )
     # 右眼 X
     canvas.create_line(
-        cx + 8*s, cy - 12*s, cx + 20*s, cy + 0*s,
+        cx + 7*s, cy - 14*s, cx + 20*s, cy - 1*s,
         fill=CAT_COLORS["eye_pupil"], width=2, tags="pet"
     )
     canvas.create_line(
-        cx + 20*s, cy - 12*s, cx + 8*s, cy + 0*s,
+        cx + 20*s, cy - 14*s, cx + 7*s, cy - 1*s,
         fill=CAT_COLORS["eye_pupil"], width=2, tags="pet"
     )
 
@@ -238,12 +309,28 @@ def draw_cat(canvas, state, frame, cx=None, cy=None):
 
     s = 1.0  # 缩放比例
 
-    # 呼吸动画（微微上下浮动）
-    breathe_offset = math.sin(frame * 0.8) * 2
+    # 呼吸动画（根据状态调整）
+    if state == STATE_SLEEPY:
+        breathe_offset = math.sin(frame * 0.4) * 3  # 更慢更深
+    elif state == STATE_HAPPY:
+        breathe_offset = math.sin(frame * 1.2) * 2  # 更快
+    elif state == STATE_SICK:
+        breathe_offset = math.sin(frame * 0.6) * 1.5  # 无力
+    else:
+        breathe_offset = math.sin(frame * 0.8) * 2  # 默认
+
+    # 状态特殊动画
+    if state == STATE_HAPPY:
+        bounce = abs(math.sin(frame * 2.0)) * 3
+        cy -= bounce  # 开心弹跳
+    elif state == STATE_SICK:
+        wobble = math.sin(frame * 1.5) * 2
+        cx += wobble  # 生病摇晃
+
     cy += breathe_offset
 
     # 绘制身体各部分
-    parts = _draw_cat_body(cx, cy, s)
+    parts = _draw_cat_body(cx, cy, s, frame, state)
 
     for part in parts:
         shape = part[0]
@@ -258,6 +345,17 @@ def draw_cat(canvas, state, frame, cx=None, cy=None):
         elif shape == "line":
             _, x1, y1, x2, y2, fill, width = part
             canvas.create_line(x1, y1, x2, y2, fill=fill, width=width, tags="pet")
+        elif shape == "spline":
+            _, points, fill, width = part
+            flat = []
+            for p in points:
+                flat.extend(p)
+            canvas.create_line(*flat, fill=fill, width=width, smooth=True,
+                             splinesteps=12, tags="pet")
+        elif shape == "arc":
+            _, x1, y1, x2, y2, start, extent, fill, width = part
+            canvas.create_arc(x1, y1, x2, y2, start=start, extent=extent,
+                            style="arc", outline=fill, width=width, tags="pet")
 
     # 根据状态覆盖特殊表情
     if state == STATE_HAPPY:
@@ -307,25 +405,15 @@ def draw_cat(canvas, state, frame, cx=None, cy=None):
         # 脏兮兮 - 在身上画几个灰点
         import random
         random.seed(42)
-        for _ in range(5):
+        for _ in range(8):
             dx = random.randint(-20, 20)
             dy = random.randint(0, 40)
+            size = random.randint(2, 4)
             canvas.create_oval(
-                cx + dx*s - 3, cy + dy*s - 3,
-                cx + dx*s + 3, cy + dy*s + 3,
+                cx + dx*s - size, cy + dy*s - size,
+                cx + dx*s + size, cy + dy*s + size,
                 fill="#AAAAAA", outline="", tags="pet"
             )
-
-    # 尾巴摇摆动画
-    tail_swing = math.sin(frame * 1.2) * 8
-    canvas.delete("tail_anim")
-    # 画一个摇摆的尾巴尖
-    tail_tip_x = cx - 45*s + tail_swing
-    tail_tip_y = cy + 50*s + math.sin(frame * 0.6) * 5
-    canvas.create_line(
-        cx - 45*s, cy + 40*s, tail_tip_x, tail_tip_y,
-        fill=CAT_COLORS["tail"], width=4, smooth=True, tags="pet"
-    )
 
 
 def draw_bubble(canvas, text, pet_cx, pet_top_y):
