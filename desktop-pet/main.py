@@ -6,7 +6,8 @@ import time
 
 from config import (
     WINDOW_WIDTH, WINDOW_HEIGHT,
-    FPS, AUTO_SAVE_INTERVAL, STATE_IDLE,
+    FPS, AUTO_SAVE_INTERVAL,
+    STATE_IDLE, STATE_HAPPY, STATE_HUNGRY, STATE_SLEEPY, STATE_DIRTY, STATE_SICK,
 )
 from pet import Pet
 from renderer import draw_cat, draw_bubble, draw_status_indicator, draw_skill_effect
